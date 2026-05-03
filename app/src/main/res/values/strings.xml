@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">RyRo</string>
+    <string name="score_label">RyRo Score: %d</string>
+    <string name="camera_permission_denied">Cấp quyền camera để bắt đầu trò chơi!</string>
+    <string name="instruction_text">Hãy đứng trước camera và đưa tay lên!</string>
+    <string name="combo_text">COMBO X%d!</string>
+</resources>

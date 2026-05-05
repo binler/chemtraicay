@@ -1,71 +1,84 @@
 package com.example.testapp.services
 
-import android.annotation.SuppressLint
+import android.content.Context
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
-import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.pose.Pose
-import com.google.mlkit.vision.pose.PoseDetection
-import com.google.mlkit.vision.pose.PoseDetector
-import com.google.mlkit.vision.pose.PoseLandmark
-import com.google.mlkit.vision.pose.defaults.PoseDetectorOptions
+import com.google.mediapipe.framework.image.BitmapImageBuilder
+import com.google.mediapipe.framework.image.MPImage
+import com.google.mediapipe.tasks.core.BaseOptions
+import com.google.mediapipe.tasks.vision.core.RunningMode
+import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarker
+import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarkerResult
 
 /**
- * Service xử lý nhận diện khung xương (Pose Detection) từ camera.
+ * Service nâng cấp sử dụng MediaPipe Pose Landmarker để nhận diện NHIỀU NGƯỜI (Multi-pose).
+ * Lưu ý: Bạn cần tải tệp 'pose_landmarker_lite.task' vào thư mục 'app/src/main/assets/'
  */
-class PoseDetectorService(private val onPoseDetected: (PoseResult) -> Unit) : ImageAnalysis.Analyzer {
+class PoseDetectorService(
+    context: Context,
+    private val onMultiPoseDetected: (List<PoseResult>) -> Unit
+) : ImageAnalysis.Analyzer {
 
-    private val options = PoseDetectorOptions.Builder()
-        .setDetectorMode(PoseDetectorOptions.STREAM_MODE)
-        .build()
+    private var poseLandmarker: PoseLandmarker? = null
 
-    private val poseDetector: PoseDetector = PoseDetection.getClient(options)
+    init {
+        val baseOptionsBuilder = BaseOptions.builder().setModelAssetPath("pose_landmarker_lite.task")
+        val optionsBuilder = PoseLandmarker.PoseLandmarkerOptions.builder()
+            .setBaseOptions(baseOptionsBuilder.build())
+            .setRunningMode(RunningMode.LIVE_STREAM)
+            .setNumPoses(2) // Nhận diện tối đa 2 người (Cha và Con)
+            .setMinPoseDetectionConfidence(0.5f)
+            .setMinTrackingConfidence(0.5f)
+            .setResultListener { result, _ ->
+                processResults(result)
+            }
+        
+        try {
+            poseLandmarker = PoseLandmarker.createFromOptions(context, optionsBuilder.build())
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
 
     data class PoseResult(
         val leftWrist: Point?,
-        val rightWrist: Point?
+        val rightWrist: Point?,
+        val centerX: Float // Dùng để xác định vị trí người chơi (Trái/Phải)
     )
 
     data class Point(val x: Float, val y: Float)
 
-    @SuppressLint("UnsafeOptInUsageError")
     override fun analyze(imageProxy: ImageProxy) {
-        val mediaImage = imageProxy.image
-        if (mediaImage != null) {
-            val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
-            
-            poseDetector.process(image)
-                .addOnSuccessListener { pose ->
-                    val result = processPose(pose, imageProxy.width, imageProxy.height)
-                    onPoseDetected(result)
-                }
-                .addOnFailureListener {
-                    // Xử lý lỗi nếu cần
-                }
-                .addOnCompleteListener {
-                    imageProxy.close()
-                }
-        } else {
-            imageProxy.close()
-        }
+        val frameTime = System.currentTimeMillis()
+        val bitmap = imageProxy.toBitmap()
+        // Mirror bitmap for front camera
+        val matrix = android.graphics.Matrix().apply { postScale(-1f, 1f, bitmap.width / 2f, bitmap.height / 2f) }
+        val mirroredBitmap = android.graphics.Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+        
+        val mpImage = BitmapImageBuilder(mirroredBitmap).build()
+        poseLandmarker?.detectAsync(mpImage, frameTime)
+        imageProxy.close()
     }
 
-    private fun processPose(pose: Pose, imageWidth: Int, imageHeight: Int): PoseResult {
-        val leftWrist = pose.getPoseLandmark(PoseLandmark.LEFT_WRIST)
-        val rightWrist = pose.getPoseLandmark(PoseLandmark.RIGHT_WRIST)
+    private fun processResults(result: PoseLandmarkerResult) {
+        val poses = result.landmarks().map { landmarks ->
+            // MediaPipe Landmarks: 15 là left_wrist, 16 là right_wrist
+            val leftWrist = if (landmarks.size > 15) landmarks[15] else null
+            val rightWrist = if (landmarks.size > 16) landmarks[16] else null
+            
+            // Lấy tọa độ hông (Hip) hoặc trung bình để xác định vị trí người
+            val centerX = landmarks.map { it.x() }.average().toFloat()
 
-        // Trả về tọa độ chuẩn hóa (0.0 - 1.0) và thực hiện Mirroring
-        return PoseResult(
-            leftWrist = leftWrist?.let { 
-                Point((imageWidth - it.position.x) / imageWidth, it.position.y / imageHeight) 
-            },
-            rightWrist = rightWrist?.let { 
-                Point((imageWidth - it.position.x) / imageWidth, it.position.y / imageHeight)
-            }
-        )
+            PoseResult(
+                leftWrist = leftWrist?.let { Point(it.x(), it.y()) },
+                rightWrist = rightWrist?.let { Point(it.x(), it.y()) },
+                centerX = centerX
+            )
+        }
+        onMultiPoseDetected(poses)
     }
 
     fun stop() {
-        poseDetector.close()
+        poseLandmarker?.close()
     }
 }

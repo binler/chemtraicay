@@ -16,11 +16,33 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -80,7 +102,12 @@ class MainActivity : ComponentActivity() {
                 }
 
                 if (hasCameraPermission) {
-                    FruitNinjaGame(viewModel, cameraExecutor)
+                    val activeGame = viewModel.activeGame
+                    if (activeGame == null) {
+                        GameListScreen(viewModel)
+                    } else {
+                        FruitNinjaGame(viewModel, cameraExecutor)
+                    }
                 } else {
                     Text(stringResource(R.string.camera_permission_denied))
                 }
@@ -95,31 +122,88 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
+fun GameListScreen(viewModel: GameViewModel) {
+    var screenSize by remember { mutableStateOf(Size(0, 0)) }
+    
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF1A1A1A)),
+        contentAlignment = Alignment.Center
+    ) {
+        // Invisible canvas to detect screen size
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            if (screenSize.width == 0) {
+                screenSize = Size(size.width.toInt(), size.height.toInt())
+            }
+        }
+
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(24.dp)
+        ) {
+            Text(
+                text = "RyRo Games",
+                style = MaterialTheme.typography.displayMedium,
+                color = Color.White,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Spacer(modifier = Modifier.height(32.dp))
+            
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(viewModel.availableGames) { game ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(100.dp)
+                            .clickable { 
+                                if (screenSize.width > 0) {
+                                    viewModel.selectGame(game, screenSize.width, screenSize.height)
+                                }
+                            },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF333333))
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = game.name,
+                                style = MaterialTheme.typography.headlineMedium,
+                                color = Color.Yellow,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun FruitNinjaGame(viewModel: GameViewModel, executor: java.util.concurrent.ExecutorService) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val haptic = LocalHapticFeedback.current
     var screenSize by remember { mutableStateOf(Size(0, 0)) }
+    val activeGame = viewModel.activeGame ?: return
 
-    // Rung khi điểm số thay đổi (chém trúng)
-    LaunchedEffect(viewModel.score) {
-        if (viewModel.score > 0) {
+    // Phản hồi rung khi bất kỳ ai có điểm
+    val totalScore = activeGame.players.sumOf { it.score }
+    LaunchedEffect(totalScore) {
+        if (totalScore > 0) {
             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-            // SỐ 4: ÂM THANH (AUDIO)
-            // Bạn có thể thêm MediaPlayer.create(context, R.raw.slice_sound).start() ở đây
-        }
-    }
-    
-    // SỐ 4: ÂM THANH KHI TRÚNG BOM
-    LaunchedEffect(viewModel.comboCount) {
-        if (viewModel.comboCount == 0 && viewModel.score > 0) {
-            // Bom nổ hoặc mất combo
-            println("Feedback: Hit bomb or lost combo")
         }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Camera Preview
+        // 1. Camera Preview
         AndroidView(
             factory = { ctx ->
                 PreviewView(ctx).apply {
@@ -131,202 +215,106 @@ fun FruitNinjaGame(viewModel: GameViewModel, executor: java.util.concurrent.Exec
                 val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
                 cameraProviderFuture.addListener({
                     val cameraProvider = cameraProviderFuture.get()
-                    
-                    val preview = Preview.Builder().build().also {
-                        it.surfaceProvider = previewView.surfaceProvider
-                    }
-
-                    val poseDetectorService = PoseDetectorService { result ->
-                        // Scale normalized coordinates to screen size
+                    val preview = Preview.Builder().build().also { it.surfaceProvider = previewView.surfaceProvider }
+                    val poseDetectorService = PoseDetectorService(context) { poses ->
                         if (screenSize.width > 0) {
-                            viewModel.leftWrist = result.leftWrist?.let { 
-                                PoseDetectorService.Point(it.x * screenSize.width, it.y * screenSize.height)
-                            }
-                            viewModel.rightWrist = result.rightWrist?.let { 
-                                PoseDetectorService.Point(it.x * screenSize.width, it.y * screenSize.height)
-                            }
+                            // Phân loại poses dựa trên vị trí X để gán cho Player 1 và Player 2
+                            // Người đứng bên trái (X nhỏ) và người đứng bên phải (X lớn)
+                            val sortedPoses = poses.sortedBy { it.centerX }
+                            
+                            viewModel.updateMultiPlayerPoses(
+                                p1Pose = sortedPoses.getOrNull(0),
+                                p2Pose = sortedPoses.getOrNull(1),
+                                width = screenSize.width.toFloat(),
+                                height = screenSize.height.toFloat()
+                            )
                         }
                     }
-
                     val imageAnalysis = ImageAnalysis.Builder()
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                        .build()
-                        .also {
-                            it.setAnalyzer(executor, poseDetectorService)
-                        }
-
-                    val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+                        .build().also { it.setAnalyzer(executor, poseDetectorService) }
 
                     try {
                         cameraProvider.unbindAll()
-                        cameraProvider.bindToLifecycle(
-                            lifecycleOwner,
-                            cameraSelector,
-                            preview,
-                            imageAnalysis
-                        )
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
+                        cameraProvider.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_FRONT_CAMERA, preview, imageAnalysis)
+                    } catch (e: Exception) { e.printStackTrace() }
                 }, ContextCompat.getMainExecutor(context))
             }
         )
 
-        // Game Logic Loop & UI
+        // 2. Game Rendering Layer
         val textMeasurer = rememberTextMeasurer()
-        
         Canvas(modifier = Modifier.fillMaxSize()) {
             if (screenSize.width == 0) {
                 screenSize = Size(size.width.toInt(), size.height.toInt())
-                viewModel.startGame(screenSize.width, screenSize.height)
             }
+            // Vẽ trò chơi hiện tại
+            activeGame.draw(this, textMeasurer)
+        }
 
-            // 1. Vẽ Trail (Vệt kiếm)
-            drawTrail(viewModel.leftTrail, Color.Cyan)
-            drawTrail(viewModel.rightTrail, Color.Magenta)
-
-            // 2. Vẽ các hạt bắn tung tóe (SỐ 3: SPLATTER)
-            viewModel.particles.forEach { p ->
-                drawCircle(
-                    color = Color(p.color).copy(alpha = p.alpha),
-                    radius = p.size,
-                    center = androidx.compose.ui.geometry.Offset(p.x, p.y)
-                )
-            }
-
-            // 3. Vẽ trái cây/Bom chưa bị chém (SỐ 1: BOM)
-            viewModel.fruits.forEach { fruit ->
-                if (!fruit.isSliced) {
-                    val emojiSize = if (fruit.isBomb) 120.sp else 100.sp
-                    val textLayoutResult = textMeasurer.measure(
-                        text = fruit.emoji,
-                        style = TextStyle(fontSize = emojiSize)
+        // 3. UI Overlay (HUD Multiplayer)
+        Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+            // Top HUD
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                // Bảng điểm danh sách người chơi
+                Column {
+                    Text(
+                        text = activeGame.name,
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
                     )
-                    drawText(
-                        textLayoutResult = textLayoutResult,
-                        topLeft = androidx.compose.ui.geometry.Offset(
-                            fruit.x - textLayoutResult.size.width / 2,
-                            fruit.y - textLayoutResult.size.height / 2
-                        )
-                    )
-                }
-            }
-
-            // 4. Vẽ các nửa trái cây đã bị chém
-            viewModel.slicedFruits.forEach { half ->
-                val emojiSize = 100.sp
-                val textLayoutResult = textMeasurer.measure(
-                    text = half.emoji,
-                    style = TextStyle(fontSize = emojiSize)
-                )
-                
-                withTransform({
-                    translate(half.x, half.y)
-                    rotate(half.rotation)
-                    // Clip một nửa emoji để tạo cảm giác bị chém đôi
-                    if (half.isLeft) {
-                        clipRect(
-                            left = -100f, top = -100f, right = 0f, bottom = 100f
-                        )
-                    } else {
-                        clipRect(
-                            left = 0f, top = -100f, right = 100f, bottom = 100f
-                        )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    activeGame.players.forEach { player ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(modifier = Modifier.size(12.dp).background(player.color, RoundedCornerShape(2.dp)))
+                            Spacer(modifier = Modifier.size(8.dp))
+                            Text(
+                                text = "${player.name}: ${player.score}",
+                                color = Color.White,
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                        }
                     }
-                }) {
-                    drawText(
-                        textLayoutResult = textLayoutResult,
-                        topLeft = androidx.compose.ui.geometry.Offset(
-                            -textLayoutResult.size.width.toFloat() / 2,
-                            -textLayoutResult.size.height.toFloat() / 2
-                        ),
-                        alpha = half.alpha
+                }
+                
+                // Nút Exit
+                IconButton(
+                    onClick = { viewModel.exitGame() },
+                    modifier = Modifier
+                        .size(50.dp)
+                        .background(Color.Red.copy(alpha = 0.6f), RoundedCornerShape(25.dp))
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ExitToApp,
+                        contentDescription = "Exit Game",
+                        tint = Color.White
                     )
                 }
             }
 
-            // 5. Vẽ COMBO (SỐ 2: COMBO)
-            if (viewModel.comboCount >= 2) {
-                val comboTextValue = "COMBO X${viewModel.comboCount}!"
-                val comboLayout = textMeasurer.measure(
-                    text = comboTextValue,
-                    style = TextStyle(
-                        fontSize = 40.sp, 
-                        fontWeight = FontWeight.Black,
-                        color = Color.Yellow
-                    )
-                )
-                drawText(
-                    textLayoutResult = comboLayout,
-                    topLeft = androidx.compose.ui.geometry.Offset(size.width / 2 - comboLayout.size.width / 2, 200f)
-                )
-            }
-
-            // 4. Vẽ điểm cổ tay hiện tại (Lưỡi kiếm)
-            viewModel.leftWrist?.let {
-                drawCircle(
-                    color = Color.White,
-                    radius = 15f,
-                    center = androidx.compose.ui.geometry.Offset(it.x, it.y)
-                )
-                drawCircle(
-                    color = Color.Cyan.copy(alpha = 0.3f),
-                    radius = 60f,
-                    center = androidx.compose.ui.geometry.Offset(it.x, it.y)
-                )
-            }
-            viewModel.rightWrist?.let {
-                drawCircle(
-                    color = Color.White,
-                    radius = 15f,
-                    center = androidx.compose.ui.geometry.Offset(it.x, it.y)
-                )
-                drawCircle(
-                    color = Color.Magenta.copy(alpha = 0.3f),
-                    radius = 60f,
-                    center = androidx.compose.ui.geometry.Offset(it.x, it.y)
-                )
-            }
-        }
-
-        // Score & Feedback
-        Box(modifier = Modifier.fillMaxSize().padding(32.dp)) {
-            Text(
-                text = stringResource(R.string.score_label, viewModel.score),
-                color = Color.Yellow,
-                fontSize = 48.sp,
-                fontWeight = FontWeight.Bold
-            )
-            
+            // Instruction Overlay
             if (viewModel.leftWrist == null && viewModel.rightWrist == null) {
-                Text(
-                    text = stringResource(R.string.instruction_text),
-                    color = Color.White,
-                    fontSize = 24.sp,
-                    modifier = Modifier.padding(top = 80.dp)
-                )
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = stringResource(R.string.instruction_text),
+                        color = Color.White,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier.background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(8.dp)).padding(16.dp)
+                    )
+                }
             }
         }
     }
 }
 
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawTrail(
-    trail: List<PoseDetectorService.Point>,
-    color: Color
-) {
-    if (trail.size < 2) return
-    for (i in 0 until trail.size - 1) {
-        val start = trail[i]
-        val end = trail[i + 1]
-        val alpha = (i.toFloat() / trail.size) * 0.8f
-        val strokeWidth = (i.toFloat() / trail.size) * 30f
-        
-        drawLine(
-            color = color.copy(alpha = alpha),
-            start = androidx.compose.ui.geometry.Offset(start.x, start.y),
-            end = androidx.compose.ui.geometry.Offset(end.x, end.y),
-            strokeWidth = strokeWidth,
-            cap = androidx.compose.ui.graphics.StrokeCap.Round
-        )
-    }
-}

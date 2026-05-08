@@ -15,13 +15,30 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import com.example.testapp.game.impl.FruitNinjaImpl
+import com.example.testapp.game.impl.PunchPointsImpl
+import com.example.testapp.game.impl.BubblePopImpl
+import com.example.testapp.game.impl.CatchStarsImpl
+import com.example.testapp.game.impl.MagicMirrorImpl
+import com.example.testapp.game.impl.TugOfWarImpl
+import com.example.testapp.game.impl.RedLightGreenLightImpl
+import com.example.testapp.game.impl.SoccerGoalieImpl
 
 class GameViewModel : ViewModel() {
     // Trạng thái game hiện tại
     var activeGame by mutableStateOf<GameLogic?>(null)
     
     // Danh sách game khả dụng cho GameListScreen
-    val availableGames = listOf(FruitNinjaImpl(), PunchPointsImpl())
+    val availableGames = listOf(
+        FruitNinjaImpl(), 
+        PunchPointsImpl(),
+        BubblePopImpl(),
+        CatchStarsImpl(),
+        MagicMirrorImpl(),
+        TugOfWarImpl(),
+        RedLightGreenLightImpl(),
+        SoccerGoalieImpl()
+    )
     
     // Danh sách Players (Local & Online)
     private val player1 = Player(id = "local_p1", name = "You", color = Color.Cyan)
@@ -45,13 +62,17 @@ class GameViewModel : ViewModel() {
         width: Float,
         height: Float
     ) {
-        // Cập nhật Player 1 (Cha/Con bên trái)
-        player1.leftWrist = p1Pose?.leftWrist?.let { PoseDetectorService.Point(it.x * width, it.y * height) }
-        player1.rightWrist = p1Pose?.rightWrist?.let { PoseDetectorService.Point(it.x * width, it.y * height) }
+        val updatePlayer = { player: Player, pose: PoseDetectorService.PoseResult? ->
+            player.leftWrist = pose?.leftWrist?.let { PoseDetectorService.Point(it.x * width, it.y * height) }
+            player.rightWrist = pose?.rightWrist?.let { PoseDetectorService.Point(it.x * width, it.y * height) }
+            player.leftShoulder = pose?.leftShoulder?.let { PoseDetectorService.Point(it.x * width, it.y * height) }
+            player.rightShoulder = pose?.rightShoulder?.let { PoseDetectorService.Point(it.x * width, it.y * height) }
+            player.leftHip = pose?.leftHip?.let { PoseDetectorService.Point(it.x * width, it.y * height) }
+            player.rightHip = pose?.rightHip?.let { PoseDetectorService.Point(it.x * width, it.y * height) }
+        }
 
-        // Cập nhật Player 2 (Cha/Con bên phải)
-        player2.leftWrist = p2Pose?.leftWrist?.let { PoseDetectorService.Point(it.x * width, it.y * height) }
-        player2.rightWrist = p2Pose?.rightWrist?.let { PoseDetectorService.Point(it.x * width, it.y * height) }
+        updatePlayer(player1, p1Pose)
+        updatePlayer(player2, p2Pose)
     }
 
     private fun startGameLoop(width: Int, height: Int) {

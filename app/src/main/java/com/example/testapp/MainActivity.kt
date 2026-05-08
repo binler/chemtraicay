@@ -298,8 +298,9 @@ fun FruitNinjaGame(viewModel: GameViewModel, executor: java.util.concurrent.Exec
                 }
             }
 
-            // Instruction Overlay
-            if (viewModel.leftWrist == null && viewModel.rightWrist == null) {
+            // Instruction Overlay (Chỉ hiện khi chưa tìm thấy ai)
+            val isAnyoneDetected = activeGame.players.any { it.leftWrist != null || it.rightWrist != null }
+            if (!isAnyoneDetected) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -307,10 +308,12 @@ fun FruitNinjaGame(viewModel: GameViewModel, executor: java.util.concurrent.Exec
                     Text(
                         text = stringResource(R.string.instruction_text),
                         color = Color.White,
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Medium,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                        modifier = Modifier.background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(8.dp)).padding(16.dp)
+                        modifier = Modifier
+                            .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                            .padding(20.dp)
                     )
                 }
             }

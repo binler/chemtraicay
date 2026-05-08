@@ -27,6 +27,8 @@ class PunchPointsImpl : GameLogic {
     override fun init(width: Int, height: Int, initialPlayers: List<Player>) {
         players.clear()
         players.addAll(initialPlayers)
+        // Reset điểm cho từng người chơi
+        players.forEach { it.score = 0 }
         targets.clear()
     }
 

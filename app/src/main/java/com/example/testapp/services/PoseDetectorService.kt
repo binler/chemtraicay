@@ -43,7 +43,11 @@ class PoseDetectorService(
     data class PoseResult(
         val leftWrist: Point?,
         val rightWrist: Point?,
-        val centerX: Float // Dùng để xác định vị trí người chơi (Trái/Phải)
+        val leftShoulder: Point? = null,
+        val rightShoulder: Point? = null,
+        val leftHip: Point? = null,
+        val rightHip: Point? = null,
+        val centerX: Float 
     )
 
     data class Point(val x: Float, val y: Float)
@@ -51,7 +55,6 @@ class PoseDetectorService(
     override fun analyze(imageProxy: ImageProxy) {
         val frameTime = System.currentTimeMillis()
         val bitmap = imageProxy.toBitmap()
-        // Mirror bitmap for front camera
         val matrix = android.graphics.Matrix().apply { postScale(-1f, 1f, bitmap.width / 2f, bitmap.height / 2f) }
         val mirroredBitmap = android.graphics.Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
         
@@ -62,17 +65,17 @@ class PoseDetectorService(
 
     private fun processResults(result: PoseLandmarkerResult) {
         val poses = result.landmarks().map { landmarks ->
-            // MediaPipe Landmarks: 15 là left_wrist, 16 là right_wrist
-            val leftWrist = if (landmarks.size > 15) landmarks[15] else null
-            val rightWrist = if (landmarks.size > 16) landmarks[16] else null
-            
-            // Lấy tọa độ hông (Hip) hoặc trung bình để xác định vị trí người
-            val centerX = landmarks.map { it.x() }.average().toFloat()
+            // MediaPipe Landmark IDs: 11: L_Shoulder, 12: R_Shoulder, 15: L_Wrist, 16: R_Wrist, 23: L_Hip, 24: R_Hip
+            val getPt = { id: Int -> if (landmarks.size > id) Point(landmarks[id].x(), landmarks[id].y()) else null }
 
             PoseResult(
-                leftWrist = leftWrist?.let { Point(it.x(), it.y()) },
-                rightWrist = rightWrist?.let { Point(it.x(), it.y()) },
-                centerX = centerX
+                leftShoulder = getPt(11),
+                rightShoulder = getPt(12),
+                leftWrist = getPt(15),
+                rightWrist = getPt(16),
+                leftHip = getPt(23),
+                rightHip = getPt(24),
+                centerX = landmarks.map { it.x() }.average().toFloat()
             )
         }
         onMultiPoseDetected(poses)

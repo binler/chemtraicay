@@ -17,6 +17,10 @@ class Player(
     var score by mutableStateOf(initialScore)
     var leftWrist by mutableStateOf<PoseDetectorService.Point?>(null)
     var rightWrist by mutableStateOf<PoseDetectorService.Point?>(null)
+    var leftShoulder by mutableStateOf<PoseDetectorService.Point?>(null)
+    var rightShoulder by mutableStateOf<PoseDetectorService.Point?>(null)
+    var leftHip by mutableStateOf<PoseDetectorService.Point?>(null)
+    var rightHip by mutableStateOf<PoseDetectorService.Point?>(null)
 }
 
 interface GameLogic {

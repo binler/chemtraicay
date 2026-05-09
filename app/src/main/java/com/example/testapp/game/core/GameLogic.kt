@@ -23,21 +23,21 @@ class Player(
     var rightHip by mutableStateOf<PoseDetectorService.Point?>(null)
 }
 
+enum class CategoryType { EXERCISE, LEARNING, SCIENCE }
+enum class AgeGroup { TODDLER, PRESCHOOL } // TODDLER: 2yo, PRESCHOOL: 5yo
+
 interface GameLogic {
     val players: List<Player>
     val name: String
+    val category: CategoryType
+    val targetAge: AgeGroup
+    val icon: String
+    val isAR: Boolean // true: Dùng Camera, false: Dùng Cảm ứng
     
-    // Khởi tạo game
-    fun init(width: Int, height: Int, initialPlayers: List<Player>)
-    
-    // Cập nhật logic
+    fun init(width: Int, height: Int, initialPlayers: List<Player>, onSpeech: (String) -> Unit = {})
     fun update(width: Int, height: Int)
-    
-    // Nhận dữ liệu Pose cho từng Player cụ thể
     fun onPlayersUpdate(updatedPlayers: List<Player>)
-    
-    // Vẽ giao diện
+    fun onTouch(x: Float, y: Float) // Xử lý cảm ứng
     fun draw(drawScope: DrawScope, textMeasurer: androidx.compose.ui.text.TextMeasurer)
-    
     fun release()
 }

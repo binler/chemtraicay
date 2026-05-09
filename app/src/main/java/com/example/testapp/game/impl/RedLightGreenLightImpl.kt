@@ -15,9 +15,16 @@ import com.example.testapp.game.core.GameLogic
 import com.example.testapp.game.core.Player
 import kotlin.random.Random
 
+import com.example.testapp.game.core.CategoryType
+import com.example.testapp.game.core.AgeGroup
+
 class RedLightGreenLightImpl : GameLogic {
     override var players = mutableStateListOf<Player>()
     override val name = "Đèn Xanh Đèn Đỏ"
+    override val category = CategoryType.LEARNING
+    override val targetAge = AgeGroup.TODDLER
+    override val icon = "🚦"
+    override val isAR = true
     
     private var isRedLight by mutableStateOf(false)
     private var lastSwitchTime = 0L
@@ -26,7 +33,7 @@ class RedLightGreenLightImpl : GameLogic {
     // Lưu trữ tiến trình của mỗi người chơi (0.0 to 1.0)
     private val progresses = mutableMapOf<String, Float>()
 
-    override fun init(width: Int, height: Int, initialPlayers: List<Player>) {
+    override fun init(width: Int, height: Int, initialPlayers: List<Player>, onSpeech: (String) -> Unit) {
         players.clear()
         players.addAll(initialPlayers)
         players.forEach { 
@@ -73,6 +80,8 @@ class RedLightGreenLightImpl : GameLogic {
     }
 
     override fun onPlayersUpdate(updatedPlayers: List<Player>) {}
+
+    override fun onTouch(x: Float, y: Float) {}
 
     override fun draw(drawScope: DrawScope, textMeasurer: androidx.compose.ui.text.TextMeasurer) {
         with(drawScope) {

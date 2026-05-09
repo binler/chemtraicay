@@ -15,16 +15,23 @@ import com.example.testapp.game.core.Player
 import com.example.testapp.services.PoseDetectorService
 import kotlin.random.Random
 
+import com.example.testapp.game.core.CategoryType
+import com.example.testapp.game.core.AgeGroup
+
 class PunchPointsImpl : GameLogic {
     override var players = mutableStateListOf<Player>()
-    override val name = "Punch Points Multiplayer"
+    override val name = "Đấm Điểm Nhanh"
+    override val category = CategoryType.EXERCISE
+    override val targetAge = AgeGroup.PRESCHOOL
+    override val icon = "🎯"
+    override val isAR = true
     
     private val targets = mutableStateListOf<TargetPoint>()
     private var lastSpawnTime = 0L
 
     data class TargetPoint(val x: Float, val y: Float, val radius: Float, val color: Color, val id: Long)
 
-    override fun init(width: Int, height: Int, initialPlayers: List<Player>) {
+    override fun init(width: Int, height: Int, initialPlayers: List<Player>, onSpeech: (String) -> Unit) {
         players.clear()
         players.addAll(initialPlayers)
         // Reset điểm cho từng người chơi
@@ -80,6 +87,8 @@ class PunchPointsImpl : GameLogic {
             }
         }
     }
+
+    override fun onTouch(x: Float, y: Float) {}
 
     override fun draw(drawScope: DrawScope, textMeasurer: androidx.compose.ui.text.TextMeasurer) {
         with(drawScope) {

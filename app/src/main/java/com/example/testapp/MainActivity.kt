@@ -10,62 +10,40 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.Preview
+import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExitToApp
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.clipRect
-import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.graphics.drawscope.translate
-import androidx.compose.ui.graphics.drawscope.withTransform
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.*
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.example.testapp.game.GameViewModel
-import com.example.testapp.services.PoseDetectorService
-import com.example.testapp.ui.theme.RyRoTheme
+import com.example.testapp.game.core.AgeGroup
+import com.example.testapp.game.core.CategoryType
+import com.example.testapp.game.core.GameLogic
+import com.example.testapp.ui.theme.*
 import java.util.concurrent.Executors
 
 class MainActivity : ComponentActivity() {
@@ -74,112 +52,75 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Giữ màn hình luôn sáng khi đang chơi
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         
         setContent {
+            val context = LocalContext.current
+            LaunchedEffect(Unit) { viewModel.initServices(context) }
+
             RyRoTheme {
                 var hasCameraPermission by remember {
-                    mutableStateOf(
-                        ContextCompat.checkSelfPermission(
-                            this,
-                            Manifest.permission.CAMERA
-                        ) == PackageManager.PERMISSION_GRANTED
-                    )
+                    mutableStateOf(ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)
                 }
 
-                val launcher = rememberLauncherForActivityResult(
-                    contract = ActivityResultContracts.RequestPermission(),
-                    onResult = { granted ->
-                        hasCameraPermission = granted
-                    }
-                )
+                val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { hasCameraPermission = it }
 
-                LaunchedEffect(Unit) {
-                    if (!hasCameraPermission) {
-                        launcher.launch(Manifest.permission.CAMERA)
-                    }
-                }
+                LaunchedEffect(Unit) { if (!hasCameraPermission) launcher.launch(Manifest.permission.CAMERA) }
 
-                if (hasCameraPermission) {
-                    val activeGame = viewModel.activeGame
-                    if (activeGame == null) {
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    if (viewModel.activeGame == null) {
                         GameListScreen(viewModel)
                     } else {
-                        FruitNinjaGame(viewModel, cameraExecutor)
+                        GameContainer(viewModel, cameraExecutor)
                     }
-                } else {
-                    Text(stringResource(R.string.camera_permission_denied))
                 }
             }
         }
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        cameraExecutor.shutdown()
     }
 }
 
 @Composable
 fun GameListScreen(viewModel: GameViewModel) {
     var screenSize by remember { mutableStateOf(Size(0, 0)) }
-    
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF1A1A1A)),
-        contentAlignment = Alignment.Center
-    ) {
-        // Invisible canvas to detect screen size
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            if (screenSize.width == 0) {
-                screenSize = Size(size.width.toInt(), size.height.toInt())
-            }
-        }
+    val backgroundColor = when(viewModel.selectedCategory) {
+        CategoryType.EXERCISE -> PastelOrange
+        CategoryType.LEARNING -> PastelBlue
+        CategoryType.SCIENCE -> PastelGreen
+    }
 
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(24.dp)
-        ) {
-            Text(
-                text = "RyRo Games",
-                style = MaterialTheme.typography.displayMedium,
-                color = Color.White,
-                fontWeight = FontWeight.Bold
-            )
-            
-            Spacer(modifier = Modifier.height(32.dp))
-            
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                items(viewModel.availableGames) { game ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(100.dp)
-                            .clickable { 
-                                if (screenSize.width > 0) {
-                                    viewModel.selectGame(game, screenSize.width, screenSize.height)
-                                }
-                            },
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF333333))
-                    ) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = game.name,
-                                style = MaterialTheme.typography.headlineMedium,
-                                color = Color.Yellow,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
+    Box(modifier = Modifier.fillMaxSize().background(backgroundColor)) {
+        Canvas(modifier = Modifier.fillMaxSize()) { if (screenSize.width == 0) screenSize = Size(size.width.toInt(), size.height.toInt()) }
+
+        Column(modifier = Modifier.fillMaxSize().padding(32.dp)) {
+            // Header
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Column {
+                    Text("Chào bé yêu! 👋", color = TextGray, fontSize = 20.sp)
+                    Text("HÀNH TINH TRI THỨC", color = Color.Black, fontSize = 32.sp, fontWeight = FontWeight.Black)
+                }
+                
+                Row(modifier = Modifier.background(Color.Black.copy(0.05f), RoundedCornerShape(32.dp)).padding(4.dp)) {
+                    AgeTabButton("Bé 2 Tuổi", viewModel.selectedAge == AgeGroup.TODDLER) { viewModel.selectedAge = AgeGroup.TODDLER }
+                    AgeTabButton("Bé 5 Tuổi", viewModel.selectedAge == AgeGroup.PRESCHOOL) { viewModel.selectedAge = AgeGroup.PRESCHOOL }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(40.dp))
+
+            // Categories
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                CategoryButton("VẬN ĐỘNG", "🎮", DeepOrange, viewModel.selectedCategory == CategoryType.EXERCISE) { viewModel.selectedCategory = CategoryType.EXERCISE }
+                CategoryButton("HỌC TẬP", "📚", DeepBlue, viewModel.selectedCategory == CategoryType.LEARNING) { viewModel.selectedCategory = CategoryType.LEARNING }
+                CategoryButton("KHOA HỌC", "🔬", DeepGreen, viewModel.selectedCategory == CategoryType.SCIENCE) { viewModel.selectedCategory = CategoryType.SCIENCE }
+            }
+
+            Spacer(modifier = Modifier.height(40.dp))
+
+            // Games
+            val filtered = viewModel.availableGames.filter { it.targetAge == viewModel.selectedAge && it.category == viewModel.selectedCategory }
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                items(filtered) { game ->
+                    GameCard(game) { viewModel.selectGame(game, screenSize.width, screenSize.height) }
                 }
             }
         }
@@ -187,137 +128,74 @@ fun GameListScreen(viewModel: GameViewModel) {
 }
 
 @Composable
-fun FruitNinjaGame(viewModel: GameViewModel, executor: java.util.concurrent.ExecutorService) {
+fun GameContainer(viewModel: GameViewModel, executor: java.util.concurrent.ExecutorService) {
     val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val haptic = LocalHapticFeedback.current
-    var screenSize by remember { mutableStateOf(Size(0, 0)) }
     val activeGame = viewModel.activeGame ?: return
-
-    // Phản hồi rung khi bất kỳ ai có điểm
-    val totalScore = activeGame.players.sumOf { it.score }
-    LaunchedEffect(totalScore) {
-        if (totalScore > 0) {
-            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-        }
-    }
+    val textMeasurer = rememberTextMeasurer()
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // 1. Camera Preview
-        AndroidView(
-            factory = { ctx ->
-                PreviewView(ctx).apply {
-                    implementationMode = PreviewView.ImplementationMode.COMPATIBLE
-                }
-            },
-            modifier = Modifier.fillMaxSize(),
-            update = { previewView ->
+        if (activeGame.isAR) {
+            AndroidView(factory = { ctx ->
+                PreviewView(ctx).apply { implementationMode = PreviewView.ImplementationMode.COMPATIBLE }
+            }, modifier = Modifier.fillMaxSize(), update = { view ->
                 val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
                 cameraProviderFuture.addListener({
-                    val cameraProvider = cameraProviderFuture.get()
-                    val preview = Preview.Builder().build().also { it.surfaceProvider = previewView.surfaceProvider }
-                    val poseDetectorService = PoseDetectorService(context) { poses ->
-                        if (screenSize.width > 0) {
-                            // Phân loại poses dựa trên vị trí X để gán cho Player 1 và Player 2
-                            // Người đứng bên trái (X nhỏ) và người đứng bên phải (X lớn)
-                            val sortedPoses = poses.sortedBy { it.centerX }
-                            
-                            viewModel.updateMultiPlayerPoses(
-                                p1Pose = sortedPoses.getOrNull(0),
-                                p2Pose = sortedPoses.getOrNull(1),
-                                width = screenSize.width.toFloat(),
-                                height = screenSize.height.toFloat()
-                            )
-                        }
-                    }
-                    val imageAnalysis = ImageAnalysis.Builder()
+                    val provider = cameraProviderFuture.get()
+                    val preview = Preview.Builder().build().also { it.surfaceProvider = view.surfaceProvider }
+                    val analysis = ImageAnalysis.Builder()
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                        .build().also { it.setAnalyzer(executor, poseDetectorService) }
-
+                        .build().also { it.setAnalyzer(executor, viewModel.getPoseAnalyzer()!!) }
                     try {
-                        cameraProvider.unbindAll()
-                        cameraProvider.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_FRONT_CAMERA, preview, imageAnalysis)
+                        provider.unbindAll()
+                        provider.bindToLifecycle(context as androidx.lifecycle.LifecycleOwner, CameraSelector.DEFAULT_FRONT_CAMERA, preview, analysis)
                     } catch (e: Exception) { e.printStackTrace() }
                 }, ContextCompat.getMainExecutor(context))
-            }
-        )
+            })
+        } else {
+            Box(modifier = Modifier.fillMaxSize().background(Color.White))
+        }
 
-        // 2. Game Rendering Layer
-        val textMeasurer = rememberTextMeasurer()
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            if (screenSize.width == 0) {
-                screenSize = Size(size.width.toInt(), size.height.toInt())
-            }
-            // Vẽ trò chơi hiện tại
+        Canvas(modifier = Modifier.fillMaxSize().pointerInput(Unit) {
+            detectTapGestures { activeGame.onTouch(it.x, it.y) }
+        }) {
             activeGame.draw(this, textMeasurer)
         }
 
-        // 3. UI Overlay (HUD Multiplayer)
-        Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
-            // Top HUD
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                // Bảng điểm danh sách người chơi
-                Column {
-                    Text(
-                        text = activeGame.name,
-                        color = Color.White.copy(alpha = 0.7f),
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    activeGame.players.forEach { player ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(modifier = Modifier.size(12.dp).background(player.color, RoundedCornerShape(2.dp)))
-                            Spacer(modifier = Modifier.size(8.dp))
-                            Text(
-                                text = "${player.name}: ${player.score}",
-                                color = Color.White,
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.ExtraBold
-                            )
-                        }
-                    }
-                }
-                
-                // Nút Exit
-                IconButton(
-                    onClick = { viewModel.exitGame() },
-                    modifier = Modifier
-                        .size(50.dp)
-                        .background(Color.Red.copy(alpha = 0.6f), RoundedCornerShape(25.dp))
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ExitToApp,
-                        contentDescription = "Exit Game",
-                        tint = Color.White
-                    )
-                }
-            }
-
-            // Instruction Overlay (Chỉ hiện khi chưa tìm thấy ai)
-            val isAnyoneDetected = activeGame.players.any { it.leftWrist != null || it.rightWrist != null }
-            if (!isAnyoneDetected) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = stringResource(R.string.instruction_text),
-                        color = Color.White,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Medium,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                        modifier = Modifier
-                            .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
-                            .padding(20.dp)
-                    )
-                }
-            }
+        IconButton(onClick = { viewModel.exitGame() }, modifier = Modifier.align(Alignment.TopEnd).padding(24.dp).size(56.dp).background(Color.Red.copy(0.7f), RoundedCornerShape(28.dp))) {
+            Icon(Icons.AutoMirrored.Filled.ExitToApp, "Exit", tint = Color.White)
         }
     }
 }
 
+@Composable
+fun AgeTabButton(text: String, isSelected: Boolean, onClick: () -> Unit) {
+    Box(modifier = Modifier.background(if (isSelected) Color.White else Color.Transparent, RoundedCornerShape(28.dp)).clickable { onClick() }.padding(horizontal = 20.dp, vertical = 10.dp)) {
+        Text(text, color = if (isSelected) Color.Black else TextGray, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+fun CategoryButton(name: String, icon: String, color: Color, isSelected: Boolean, onClick: () -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { onClick() }.alpha(if (isSelected) 1f else 0.4f)) {
+        Box(modifier = Modifier.size(100.dp).background(color, RoundedCornerShape(32.dp)), contentAlignment = Alignment.Center) {
+            Text(icon, fontSize = 48.sp)
+        }
+        Text(name, color = color, fontWeight = FontWeight.Bold, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+    }
+}
+
+@Composable
+fun GameCard(game: GameLogic, onClick: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth().height(100.dp).clickable { onClick() }, shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color.White.copy(0.9f))) {
+        Row(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(game.icon, fontSize = 40.sp)
+            Spacer(modifier = Modifier.width(20.dp))
+            Column {
+                Text(game.name, color = Color.Black, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Text(if (game.isAR) "Vận động cùng AI" else "Khám phá cảm ứng", color = TextGray, fontSize = 14.sp)
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            Text("BẮT ĐẦU ✨", color = DeepOrange, fontWeight = FontWeight.Bold)
+        }
+    }
+}

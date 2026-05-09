@@ -51,6 +51,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.mlkit.pose.detection)
     implementation("com.google.mediapipe:tasks-vision:0.10.14")
+    implementation("com.airbnb.android:lottie-compose:6.4.0") // Thêm Lottie
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)

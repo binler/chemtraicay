@@ -16,14 +16,21 @@ import com.example.testapp.game.core.GameLogic
 import com.example.testapp.game.core.Player
 import com.example.testapp.services.PoseDetectorService
 
+import com.example.testapp.game.core.CategoryType
+import com.example.testapp.game.core.AgeGroup
+
 class TugOfWarImpl : GameLogic {
     override var players = mutableStateListOf<Player>()
     override val name = "Kéo Co Thần Kỳ"
+    override val category = CategoryType.EXERCISE
+    override val targetAge = AgeGroup.PRESCHOOL
+    override val icon = "🤝"
+    override val isAR = true
     
     private var ropePosition by mutableStateOf(0f) // -300 to 300
     private val winThreshold = 400f
 
-    override fun init(width: Int, height: Int, initialPlayers: List<Player>) {
+    override fun init(width: Int, height: Int, initialPlayers: List<Player>, onSpeech: (String) -> Unit) {
         players.clear()
         players.addAll(initialPlayers)
         players.forEach { it.score = 0 }
@@ -53,6 +60,8 @@ class TugOfWarImpl : GameLogic {
     }
 
     override fun onPlayersUpdate(updatedPlayers: List<Player>) {}
+
+    override fun onTouch(x: Float, y: Float) {}
 
     override fun draw(drawScope: DrawScope, textMeasurer: androidx.compose.ui.text.TextMeasurer) {
         with(drawScope) {

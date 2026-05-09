@@ -12,9 +12,16 @@ import com.example.testapp.game.core.Player
 import com.example.testapp.services.PoseDetectorService
 import kotlin.random.Random
 
+import com.example.testapp.game.core.CategoryType
+import com.example.testapp.game.core.AgeGroup
+
 class CatchStarsImpl : GameLogic {
     override var players = mutableStateListOf<Player>()
     override val name = "Hái Sao Cho Bé"
+    override val category = CategoryType.EXERCISE
+    override val targetAge = AgeGroup.TODDLER
+    override val icon = "⭐"
+    override val isAR = true
     
     private val stars = mutableStateListOf<Star>()
     private var lastSpawnTime = 0L
@@ -22,7 +29,7 @@ class CatchStarsImpl : GameLogic {
     data class Star(var x: Float, var y: Float, val emoji: String, val id: Long, val type: StarType)
     enum class StarType { HIGH, LOW, SPECIAL }
 
-    override fun init(width: Int, height: Int, initialPlayers: List<Player>) {
+    override fun init(width: Int, height: Int, initialPlayers: List<Player>, onSpeech: (String) -> Unit) {
         players.clear()
         players.addAll(initialPlayers)
         players.forEach { it.score = 0 }
@@ -86,5 +93,6 @@ class CatchStarsImpl : GameLogic {
     }
 
     private fun dist(x1: Float, y1: Float, x2: Float, y2: Float) = kotlin.math.sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2))
+    override fun onTouch(x: Float, y: Float) {}
     override fun release() {}
 }

@@ -11,16 +11,23 @@ import com.example.testapp.game.core.GameLogic
 import com.example.testapp.game.core.Player
 import kotlin.random.Random
 
+import com.example.testapp.game.core.CategoryType
+import com.example.testapp.game.core.AgeGroup
+
 class SoccerGoalieImpl : GameLogic {
     override var players = mutableStateListOf<Player>()
     override val name = "Thủ Môn Nhí"
+    override val category = CategoryType.EXERCISE
+    override val targetAge = AgeGroup.PRESCHOOL
+    override val icon = "⚽"
+    override val isAR = true
     
     private val balls = mutableStateListOf<Ball>()
     private var lastSpawnTime = 0L
 
     data class Ball(var x: Float, var y: Float, var vx: Float, var vy: Float, val radius: Float = 50f)
 
-    override fun init(width: Int, height: Int, initialPlayers: List<Player>) {
+    override fun init(width: Int, height: Int, initialPlayers: List<Player>, onSpeech: (String) -> Unit) {
         players.clear()
         players.addAll(initialPlayers)
         players.forEach { it.score = 0 }
@@ -66,6 +73,8 @@ class SoccerGoalieImpl : GameLogic {
     }
 
     override fun onPlayersUpdate(updatedPlayers: List<Player>) {}
+
+    override fun onTouch(x: Float, y: Float) {}
 
     override fun draw(drawScope: DrawScope, textMeasurer: androidx.compose.ui.text.TextMeasurer) {
         with(drawScope) {

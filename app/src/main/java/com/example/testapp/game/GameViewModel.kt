@@ -1,102 +1,96 @@
 package com.example.testapp.game
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.testapp.game.core.AgeGroup
+import com.example.testapp.game.core.CategoryType
 import com.example.testapp.game.core.GameLogic
 import com.example.testapp.game.core.Player
-import com.example.testapp.game.impl.FruitNinjaImpl
-import com.example.testapp.game.impl.PunchPointsImpl
+import com.example.testapp.game.impl.*
+import com.example.testapp.ml.PoseProcessor
 import com.example.testapp.services.PoseDetectorService
+import com.example.testapp.services.SpeechService
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import com.example.testapp.game.impl.FruitNinjaImpl
-import com.example.testapp.game.impl.PunchPointsImpl
-import com.example.testapp.game.impl.BubblePopImpl
-import com.example.testapp.game.impl.CatchStarsImpl
-import com.example.testapp.game.impl.MagicMirrorImpl
-import com.example.testapp.game.impl.TugOfWarImpl
-import com.example.testapp.game.impl.RedLightGreenLightImpl
-import com.example.testapp.game.impl.SoccerGoalieImpl
 
 class GameViewModel : ViewModel() {
-    // Trạng thái game hiện tại
     var activeGame by mutableStateOf<GameLogic?>(null)
-    
-    // Danh sách game khả dụng cho GameListScreen
-    val availableGames = listOf(
-        FruitNinjaImpl(), 
-        PunchPointsImpl(),
-        BubblePopImpl(),
-        CatchStarsImpl(),
-        MagicMirrorImpl(),
-        TugOfWarImpl(),
-        RedLightGreenLightImpl(),
-        SoccerGoalieImpl()
-    )
-    
-    // Danh sách Players (Local & Online)
-    private val player1 = Player(id = "local_p1", name = "You", color = Color.Cyan)
-    private val player2 = Player(id = "remote_p2", name = "Opponent", color = Color.Magenta)
-    
-    var leftWrist by mutableStateOf<PoseDetectorService.Point?>(null)
-    var rightWrist by mutableStateOf<PoseDetectorService.Point?>(null)
-    
+    private var poseProcessor: PoseProcessor? = null
+    private var speechService: SpeechService? = null
     private var gameJob: Job? = null
 
-    fun selectGame(game: GameLogic, width: Int, height: Int) {
-        activeGame = game
-        // Khởi tạo game với 2 người chơi thật
-        activeGame?.init(width, height, listOf(player1, player2))
-        startGameLoop(width, height)
-    }
+    // Quản lý trạng thái theo Spec
+    var selectedAge by mutableStateOf(AgeGroup.TODDLER)
+    var selectedCategory by mutableStateOf(CategoryType.LEARNING)
 
-    fun updateMultiPlayerPoses(
-        p1Pose: PoseDetectorService.PoseResult?,
-        p2Pose: PoseDetectorService.PoseResult?,
-        width: Float,
-        height: Float
-    ) {
-        val updatePlayer = { player: Player, pose: PoseDetectorService.PoseResult? ->
-            player.leftWrist = pose?.leftWrist?.let { PoseDetectorService.Point(it.x * width, it.y * height) }
-            player.rightWrist = pose?.rightWrist?.let { PoseDetectorService.Point(it.x * width, it.y * height) }
-            player.leftShoulder = pose?.leftShoulder?.let { PoseDetectorService.Point(it.x * width, it.y * height) }
-            player.rightShoulder = pose?.rightShoulder?.let { PoseDetectorService.Point(it.x * width, it.y * height) }
-            player.leftHip = pose?.leftHip?.let { PoseDetectorService.Point(it.x * width, it.y * height) }
-            player.rightHip = pose?.rightHip?.let { PoseDetectorService.Point(it.x * width, it.y * height) }
+    private val player1 = Player(id = "p1", name = "Bé", color = Color.Cyan)
+    private val player2 = Player(id = "p2", name = "Ba/Mẹ", color = Color.Magenta)
+    
+    // Lưu kích thước màn hình để scale tọa độ
+    private var screenWidth = 0f
+    private var screenHeight = 0f
+
+    val availableGames = listOf(
+        FruitNinjaImpl(), SoccerGoalieImpl(), TugOfWarImpl(),
+        EnglishFlashcardsImpl(), BubblePopImpl(),
+        WaterCycleImpl(), SolarSystemImpl(), PlantLifecycleImpl()
+    )
+
+    fun initServices(context: android.content.Context) {
+        if (speechService == null) speechService = SpeechService(context)
+        if (poseProcessor == null) {
+            poseProcessor = PoseProcessor(context)
+            // Theo dõi StateFlow dữ liệu Pose liên tục
+            viewModelScope.launch {
+                poseProcessor?.poseData?.collectLatest { poses ->
+                    updateMultiPlayerPoses(poses.getOrNull(0), poses.getOrNull(1))
+                }
+            }
         }
-
-        updatePlayer(player1, p1Pose)
-        updatePlayer(player2, p2Pose)
     }
 
-    private fun startGameLoop(width: Int, height: Int) {
-        val game = activeGame ?: return
+    private fun updateMultiPlayerPoses(p1: PoseDetectorService.PoseResult?, p2: PoseDetectorService.PoseResult?) {
+        val update = { player: Player, res: PoseDetectorService.PoseResult? ->
+            if (screenWidth > 0) {
+                player.leftWrist = res?.leftWrist?.let { PoseDetectorService.Point(it.x * screenWidth, it.y * screenHeight) }
+                player.rightWrist = res?.rightWrist?.let { PoseDetectorService.Point(it.x * screenWidth, it.y * screenHeight) }
+                player.leftShoulder = res?.leftShoulder?.let { PoseDetectorService.Point(it.x * screenWidth, it.y * screenHeight) }
+                player.rightShoulder = res?.rightShoulder?.let { PoseDetectorService.Point(it.x * screenWidth, it.y * screenHeight) }
+            }
+        }
+        update(player1, p1)
+        update(player2, p2)
+    }
+
+    fun selectGame(game: GameLogic, width: Int, height: Int) {
+        screenWidth = width.toFloat()
+        screenHeight = height.toFloat()
+        activeGame = game
+        activeGame?.init(width, height, listOf(player1, player2), onSpeech = { speak(it) })
+        
         gameJob?.cancel()
         gameJob = viewModelScope.launch {
             while (isActive) {
-                // Không cần simulateRemotePlayer nữa vì đã có 2 người thật
-                game.onPlayersUpdate(listOf(player1, player2))
-                game.update(width, height)
+                activeGame?.onPlayersUpdate(listOf(player1, player2))
+                activeGame?.update(width, height)
                 delay(16)
             }
         }
     }
 
-    fun exitGame() {
-        gameJob?.cancel()
-        activeGame?.release()
-        activeGame = null
-    }
+    fun speak(text: String) = speechService?.speak(text)
+    fun exitGame() { gameJob?.cancel(); activeGame?.release(); activeGame = null }
+    fun getPoseAnalyzer() = poseProcessor
 
     override fun onCleared() {
         super.onCleared()
         gameJob?.cancel()
-        activeGame?.release()
+        poseProcessor?.stop()
+        speechService?.shutdown()
     }
 }

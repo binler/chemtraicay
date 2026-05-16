@@ -23,17 +23,20 @@ class FruitNinjaImpl : GameLogic {
 
     private val fruits = mutableStateListOf<Fruit>()
     private val slicedFruits = mutableStateListOf<SlicedHalf>()
+    private val particles = mutableStateListOf<Particle>()
     private var lastSpawnTime = 0L
 
     data class Fruit(var id: Long, var x: Float, var y: Float, var vx: Float, var vy: Float, var isSliced: Boolean, val emoji: String, val isBomb: Boolean)
     data class SlicedHalf(var x: Float, var y: Float, var vx: Float, var vy: Float, var rotation: Float, var emoji: String, var isLeft: Boolean, var alpha: Float)
+    data class Particle(var x: Float, var y: Float, var vx: Float, var vy: Float, val color: Color, var alpha: Float = 1f)
 
-    override fun init(width: Int, height: Int, initialPlayers: List<Player>, onSpeech: (String) -> Unit) {
+    override fun init(context: android.content.Context, width: Int, height: Int, initialPlayers: List<Player>, onSpeech: (String) -> Unit) {
         players.clear()
         players.addAll(initialPlayers)
         players.forEach { it.score = 0 }
         fruits.clear()
         slicedFruits.clear()
+        particles.clear()
     }
 
     override fun update(width: Int, height: Int) {
@@ -41,13 +44,17 @@ class FruitNinjaImpl : GameLogic {
         if (currentTime - lastSpawnTime > 1200L) {
             val x = (0.2f + Random.nextFloat() * 0.6f) * width
             val isBomb = Random.nextFloat() < 0.15f
-            fruits.add(Fruit(System.currentTimeMillis(), x, height.toFloat() + 50f, (Random.nextFloat() - 0.5f) * 10f, -15f - Random.nextFloat() * 10f, false, if (isBomb) "💣" else "🍎", isBomb))
+            fruits.add(Fruit(System.currentTimeMillis(), x, height.toFloat() + 50f, (Random.nextFloat() - 0.5f) * 10f, -15f - Random.nextFloat() * 10f, false, if (isBomb) "💣" else listOf("🍎", "🍊", "🍉", "🍓", "🍍").random(), isBomb))
             lastSpawnTime = currentTime
         }
         fruits.forEach { it.x += it.vx; it.y += it.vy; it.vy += 0.35f }
         fruits.removeAll { it.y > height + 100 || it.isSliced }
         slicedFruits.forEach { it.x += it.vx; it.y += it.vy; it.vy += 0.35f; it.rotation += 5f; it.alpha -= 0.02f }
         slicedFruits.removeAll { it.alpha <= 0 || it.y > height + 100 }
+        
+        particles.forEach { it.x += it.vx; it.y += it.vy; it.vy += 0.1f; it.alpha -= 0.02f }
+        particles.removeAll { it.alpha <= 0 }
+        
         checkCollisions()
     }
 
@@ -56,12 +63,24 @@ class FruitNinjaImpl : GameLogic {
             val wrists = listOfNotNull(player.leftWrist, player.rightWrist)
             wrists.forEach { wrist ->
                 fruits.forEach { fruit ->
-                    if (!fruit.isSliced && dist(wrist.x, wrist.y, fruit.x, fruit.y) < 100) {
+                    if (!wrist.x.isNaN() && !fruit.isSliced && dist(wrist.x, wrist.y, fruit.x, fruit.y) < 100) {
                         if (fruit.isBomb) player.score = (player.score - 50).coerceAtLeast(0) else player.score += 10
                         fruit.isSliced = true
+                        
                         if (!fruit.isBomb) {
                             slicedFruits.add(SlicedHalf(fruit.x, fruit.y, fruit.vx - 5, fruit.vy, 0f, fruit.emoji, true, 1f))
                             slicedFruits.add(SlicedHalf(fruit.x, fruit.y, fruit.vx + 5, fruit.vy, 0f, fruit.emoji, false, 1f))
+                            
+                            // Thêm hạt màu sắc rực rỡ
+                            repeat(10) {
+                                particles.add(Particle(fruit.x, fruit.y, (Random.nextFloat() - 0.5f) * 15f, (Random.nextFloat() - 0.5f) * 15f, 
+                                    listOf(Color.Yellow, Color.White, Color.Cyan, Color.Magenta).random()))
+                            }
+                        } else {
+                            // Thêm hạt màu xám khi trúng bom
+                            repeat(15) {
+                                particles.add(Particle(fruit.x, fruit.y, (Random.nextFloat() - 0.5f) * 20f, (Random.nextFloat() - 0.5f) * 20f, Color.Gray))
+                            }
                         }
                     }
                 }
@@ -74,6 +93,10 @@ class FruitNinjaImpl : GameLogic {
 
     override fun draw(drawScope: DrawScope, textMeasurer: androidx.compose.ui.text.TextMeasurer) {
         with(drawScope) {
+            // Vẽ các hạt lấp lánh trước
+            particles.forEach { p ->
+                drawCircle(p.color.copy(alpha = p.alpha), radius = 8f * p.alpha, center = Offset(p.x, p.y))
+            }
             fruits.forEach {
                 val layout = textMeasurer.measure(it.emoji, TextStyle(fontSize = 80.sp))
                 drawText(textLayoutResult = layout, topLeft = Offset(it.x - layout.size.width/2, it.y - layout.size.height/2))

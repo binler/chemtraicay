@@ -33,7 +33,7 @@ class MathNinjaImpl : GameLogic {
 
     data class NumberOption(val value: Int, var x: Float, var y: Float, val vx: Float, val vy: Float)
 
-    override fun init(width: Int, height: Int, initialPlayers: List<Player>, onSpeech: (String) -> Unit) {
+    override fun init(context: android.content.Context, width: Int, height: Int, initialPlayers: List<Player>, onSpeech: (String) -> Unit) {
         this.onSpeech = onSpeech
         players.clear()
         players.addAll(initialPlayers)

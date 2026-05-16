@@ -8,27 +8,34 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
-private val LightColorScheme = lightColorScheme(
-    primary = DeepBlue,
-    secondary = DeepGreen,
-    tertiary = DeepPink,
-    background = PastelBlue,
-    surface = Color.White
+private val KhanKidsColorScheme = lightColorScheme(
+    primary = SkyBlue,
+    onPrimary = Color.White,
+    secondary = MintGreen,
+    onSecondary = Color.White,
+    tertiary = SoftPink,
+    onTertiary = Color.White,
+    background = CreamWhite,
+    onBackground = TextDark,
+    surface = Color.White,
+    onSurface = TextDark,
+    secondaryContainer = SunnyYellow,
+    onSecondaryContainer = TextDark
 )
 
-val BabyShapes = Shapes(
-    extraSmall = RoundedCornerShape(12.dp),
-    small = RoundedCornerShape(16.dp),
-    medium = RoundedCornerShape(24.dp), // Spec yêu cầu 24dp+
+val KhanKidsShapes = Shapes(
+    small = RoundedCornerShape(32.dp),
+    medium = RoundedCornerShape(32.dp),
     large = RoundedCornerShape(32.dp),
-    extraLarge = RoundedCornerShape(40.dp)
+    extraLarge = RoundedCornerShape(32.dp)
 )
 
 @Composable
 fun RyRoTheme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = LightColorScheme,
-        shapes = BabyShapes,
+        colorScheme = KhanKidsColorScheme,
+        shapes = KhanKidsShapes,
+        typography = Typography,
         content = content
     )
 }

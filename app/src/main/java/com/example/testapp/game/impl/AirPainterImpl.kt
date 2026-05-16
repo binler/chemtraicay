@@ -22,7 +22,7 @@ class AirPainterImpl : GameLogic {
     private val playerPaths = mutableMapOf<String, MutableList<Offset>>()
     private var onSpeech: (String) -> Unit = {}
 
-    override fun init(width: Int, height: Int, initialPlayers: List<Player>, onSpeech: (String) -> Unit) {
+    override fun init(context: android.content.Context, width: Int, height: Int, initialPlayers: List<Player>, onSpeech: (String) -> Unit) {
         this.onSpeech = onSpeech
         players.clear()
         players.addAll(initialPlayers)

@@ -1,7 +1,30 @@
 <resources>
     <string name="app_name">RyRo</string>
-    <string name="score_label">RyRo Score: %d</string>
-    <string name="camera_permission_denied">Cấp quyền camera để bắt đầu trò chơi!</string>
-    <string name="instruction_text">Hãy đứng trước camera và đưa tay lên!</string>
-    <string name="combo_text">COMBO X%d!</string>
+    <string name="score_label">Giỏi quá con ơi: %d điểm!</string>
+    <string name="camera_permission_denied">Cho phép camera để cùng chơi vui nhé!</string>
+    <string name="instruction_text">Đứng trước camera và vẫy tay nào!</string>
+    <string name="combo_text">SIÊU QUÁ! X%d!</string>
+    <string name="start_game">Cùng chơi thôi!</string>
+    <string name="end_game">Giỏi quá, nghỉ xíu con nhé!</string>
+
+    <!-- Solar System Module -->
+    <string name="solar_system_title">Hệ Mặt Trời của Chúng Ta - Chạm vào hành tinh để tìm hiểu thêm!</string>
+    <string name="solar_speed_label">Tốc Độ Xoay</string>
+    <string name="solar_speed_slow">Chậm</string>
+    <string name="solar_speed_fast">Nhanh</string>
+    <string name="solar_btn_explore">Khám Phá</string>
+    <string name="solar_btn_research">Nghiên cứu Khoa học</string>
+    <string name="solar_progress_total">Tổng Tiến Trình: %d%%</string>
+    <string name="solar_status_start">Sắp bắt đầu</string>
+    <string name="solar_status_doing">Đang thực hiện</string>
+    <string name="solar_status_done">Đã hoàn thành</string>
+    <string name="solar_status_master">Đã tinh thông</string>
+
+    <string name="solar_fact_sun">Đây là Mặt Trời, trái tim rực rỡ mang hơi ấm đến cho muôn loài!</string>
+    <string name="solar_fact_mercury">Đây là Sao Thủy, hành tinh bé nhỏ chạy nhanh nhất gần Mặt Trời đấy!</string>
+    <string name="solar_fact_venus">Đây là Sao Kim, hành tinh lấp lánh và nóng bỏng nhất bầu trời đêm!</string>
+    <string name="solar_fact_earth">Đây là Trái Đất thân yêu, ngôi nhà xanh xinh đẹp nơi chúng ta đang sống!</string>
+    <string name="solar_fact_mars">Đây là Sao Hỏa đỏ rực, nơi có những ngọn núi lửa khổng lồ và bí ẩn!</string>
+    <string name="solar_fact_jupiter">Đây là Sao Mộc, anh cả khổng lồ nhất với những cơn bão quay tròn!</string>
+    <string name="solar_fact_saturn">Đây là Sao Thổ, hành tinh có chiếc vòng đeo cổ khổng lồ đẹp nhất vũ trụ!</string>
 </resources>

@@ -34,7 +34,7 @@ interface GameLogic {
     val icon: String
     val isAR: Boolean // true: Dùng Camera, false: Dùng Cảm ứng
     
-    fun init(width: Int, height: Int, initialPlayers: List<Player>, onSpeech: (String) -> Unit = {})
+    fun init(context: android.content.Context, width: Int, height: Int, initialPlayers: List<Player>, onSpeech: (String) -> Unit = {})
     fun update(width: Int, height: Int)
     fun onPlayersUpdate(updatedPlayers: List<Player>)
     fun onTouch(x: Float, y: Float) // Xử lý cảm ứng

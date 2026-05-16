@@ -17,9 +17,10 @@ class SpeechService(context: Context) : TextToSpeech.OnInitListener {
         }
     }
 
-    fun speak(text: String) {
+    fun speak(text: String, isInterrupt: Boolean = false) {
         if (isInitialized) {
-            tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
+            val queueMode = if (isInterrupt) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
+            tts.speak(text, queueMode, null, null)
         }
     }
 

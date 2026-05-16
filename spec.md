@@ -1,26 +1,15 @@
-# Kotlin Specification: Fruit Ninja AI & Learning Ecosystem
+# ARCHITECTURE & UI REVAMP SPEC (KOTLIN NATIVE)
 
-## 1. Technical Stack
-- **Language:** Kotlin (100%).
-- **UI Framework:** Jetpack Compose (Modern UI).
-- **AI/ML:** Google ML Kit Pose Detection (Client-side).
-- **Camera:** CameraX (Analysis mode for ML Kit).
-- **Animation:** Compose Animation (Lottie for complex animations).
-
-## 2. UI/UX Guidelines (Focus: 2-5 Years Old)
-- **Visuals:** Bright Pastel Palette, Rounded Corners (CornerRadius 24dp+).
-- **Language:** 100% Tiếng Việt (Localization: strings.xml).
-- **Interaction:** Haptic feedback (Rung nhẹ) khi bé làm đúng bài tập.
-- **Orientation:** Lock Landscape (android:screenOrientation="landscape").
-
-## 3. Architecture
+## 1. Source Code Consistency
 - **Pattern:** MVVM (Model-View-ViewModel).
-- **State:** Use `StateFlow` to update wrist coordinates from CameraX to UI.
-- **Component:**
-  - `/ui/theme/`: Định nghĩa hệ màu sắc và Typography tiếng Việt.
-  - `/ui/components/`: Các Widget học tập (Thẻ bài, Nút bấm lớn).
-  - `/ml/`: PoseDetector analyzer.
+- **Navigation:** Sử dụng Jetpack Compose Navigation với hiệu ứng chuyển cảnh 'Slide and Fade'.
+- **Language:** 100% Tiếng Việt (Localization via strings.xml).
 
-## 4. Animation Goals
-- Tạo hiệu ứng 'chuyển cảnh mềm' (Smooth transitions) giữa các phân khu: Trò chơi, Học tập và Khoa học.
-- Sử dụng Lottie để hiển thị các nhân vật hoạt hình động hướng dẫn bé bằng tiếng Việt.
+## 2. UI Standards (Khan Academy Inspired)
+- **Backgrounds:** Sử dụng Gradient mềm hoặc Soft Patterns (Mây/Sao).
+- **Interactive:** Mọi vật thể chạm được phải có hiệu ứng 'Spring Animation'.
+- **Layout:** Z-Index rõ ràng: Camera (0) -> Game/Content (1) -> UI Overlay (2).
+
+## 3. High-Quality Infographics (Science Module)
+- **Assets:** Tuyệt đối không vẽ thủ công. Sử dụng Lottie JSON cho các hành tinh và hiệu ứng vũ trụ.
+- **Micro-interactions:** Bé chạm vào đâu, chỗ đó phải phản hồi (phóng to, phát tiếng Việt).

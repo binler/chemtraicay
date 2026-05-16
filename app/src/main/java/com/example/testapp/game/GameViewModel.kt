@@ -20,6 +20,10 @@ import kotlinx.coroutines.launch
 
 class GameViewModel : ViewModel() {
     var activeGame by mutableStateOf<GameLogic?>(null)
+    
+    // "Nhịp tim" của hệ thống - Ép Render 60fps
+    var renderTick by mutableStateOf(0L)
+
     private var poseProcessor: PoseProcessor? = null
     private var speechService: SpeechService? = null
     private var gameJob: Job? = null
@@ -36,9 +40,16 @@ class GameViewModel : ViewModel() {
     private var screenHeight = 0f
 
     val availableGames = listOf(
+        // VẬN ĐỘNG (AR)
         FruitNinjaImpl(), SoccerGoalieImpl(), TugOfWarImpl(),
-        EnglishFlashcardsImpl(), BubblePopImpl(),
-        WaterCycleImpl(), SolarSystemImpl(), PlantLifecycleImpl()
+        
+        // HỌC TẬP (Cảm ứng)
+        BubblePopImpl(), AnimalOrchestraImpl(), // Cho bé 2 tuổi
+        MathGardenImpl(), EnglishFlashcardsImpl(), // Cho bé 5 tuổi
+        
+        // KHOA HỌC (Cảm ứng)
+        BodyXRayImpl(), // Cho bé 2 tuổi
+        WaterCycleImpl(), SolarSystemImpl(), PlantLifecycleImpl() // Cho bé 5 tuổi
     )
 
     fun initServices(context: android.content.Context) {
@@ -67,15 +78,16 @@ class GameViewModel : ViewModel() {
         update(player2, p2)
     }
 
-    fun selectGame(game: GameLogic, width: Int, height: Int) {
+    fun selectGame(context: android.content.Context, game: GameLogic, width: Int, height: Int) {
         screenWidth = width.toFloat()
         screenHeight = height.toFloat()
         activeGame = game
-        activeGame?.init(width, height, listOf(player1, player2), onSpeech = { speak(it) })
+        activeGame?.init(context, width, height, listOf(player1, player2), onSpeech = { speak(it) })
         
         gameJob?.cancel()
         gameJob = viewModelScope.launch {
             while (isActive) {
+                renderTick++ // Cập nhật nhịp tim liên tục
                 activeGame?.onPlayersUpdate(listOf(player1, player2))
                 activeGame?.update(width, height)
                 delay(16)

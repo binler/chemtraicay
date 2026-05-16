@@ -33,7 +33,7 @@ class RedLightGreenLightImpl : GameLogic {
     // Lưu trữ tiến trình của mỗi người chơi (0.0 to 1.0)
     private val progresses = mutableMapOf<String, Float>()
 
-    override fun init(width: Int, height: Int, initialPlayers: List<Player>, onSpeech: (String) -> Unit) {
+    override fun init(context: android.content.Context, width: Int, height: Int, initialPlayers: List<Player>, onSpeech: (String) -> Unit) {
         players.clear()
         players.addAll(initialPlayers)
         players.forEach { 

@@ -29,7 +29,7 @@ class CatchStarsImpl : GameLogic {
     data class Star(var x: Float, var y: Float, val emoji: String, val id: Long, val type: StarType)
     enum class StarType { HIGH, LOW, SPECIAL }
 
-    override fun init(width: Int, height: Int, initialPlayers: List<Player>, onSpeech: (String) -> Unit) {
+    override fun init(context: android.content.Context, width: Int, height: Int, initialPlayers: List<Player>, onSpeech: (String) -> Unit) {
         players.clear()
         players.addAll(initialPlayers)
         players.forEach { it.score = 0 }

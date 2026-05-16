@@ -56,7 +56,7 @@ class EnglishFlashcardsImpl : GameLogic {
     private var onSpeech: (String) -> Unit = {}
     private var lastInteractionTime = 0L
 
-    override fun init(width: Int, height: Int, initialPlayers: List<Player>, onSpeech: (String) -> Unit) {
+    override fun init(context: android.content.Context, width: Int, height: Int, initialPlayers: List<Player>, onSpeech: (String) -> Unit) {
         this.onSpeech = onSpeech
         players.clear()
         players.addAll(initialPlayers)

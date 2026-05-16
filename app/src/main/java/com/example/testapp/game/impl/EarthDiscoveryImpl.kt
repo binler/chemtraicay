@@ -31,7 +31,7 @@ class EarthDiscoveryImpl : GameLogic {
 
     data class Fish(var x: Float, var y: Float, val color: Color, val speed: Float, val size: Float, val emoji: String)
 
-    override fun init(width: Int, height: Int, initialPlayers: List<Player>, onSpeech: (String) -> Unit) {
+    override fun init(context: android.content.Context, width: Int, height: Int, initialPlayers: List<Player>, onSpeech: (String) -> Unit) {
         this.onSpeech = onSpeech
         players.clear()
         cloudAlpha = 1f

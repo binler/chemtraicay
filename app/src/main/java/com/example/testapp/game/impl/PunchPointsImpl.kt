@@ -31,7 +31,7 @@ class PunchPointsImpl : GameLogic {
 
     data class TargetPoint(val x: Float, val y: Float, val radius: Float, val color: Color, val id: Long)
 
-    override fun init(width: Int, height: Int, initialPlayers: List<Player>, onSpeech: (String) -> Unit) {
+    override fun init(context: android.content.Context, width: Int, height: Int, initialPlayers: List<Player>, onSpeech: (String) -> Unit) {
         players.clear()
         players.addAll(initialPlayers)
         // Reset điểm cho từng người chơi

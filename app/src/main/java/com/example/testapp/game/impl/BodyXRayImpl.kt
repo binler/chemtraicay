@@ -1,17 +1,16 @@
 package com.example.testapp.game.impl
 
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.*
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import com.example.testapp.game.core.AgeGroup
-import com.example.testapp.game.core.CategoryType
-import com.example.testapp.game.core.GameLogic
-import com.example.testapp.game.core.Player
+import com.example.testapp.game.core.*
+import com.example.testapp.ui.theme.*
 import kotlin.math.sqrt
 
 class BodyXRayImpl : GameLogic {
@@ -20,71 +19,91 @@ class BodyXRayImpl : GameLogic {
     override val category = CategoryType.SCIENCE
     override val targetAge = AgeGroup.TODDLER
     override val icon = "🦴"
-    override val isAR = true
+    override val isAR = false // CẢM ỨNG CHO BÉ 2 TUỔI
 
+    private data class BodyPart(val name: String, val x: Float, val y: Float, val radius: Float)
+    private val parts = mutableStateListOf<BodyPart>()
     private var onSpeech: (String) -> Unit = {}
-    private var lastSpeechTime = 0L
+    private var lastInteractionTime = 0L
 
-    override fun init(width: Int, height: Int, initialPlayers: List<Player>, onSpeech: (String) -> Unit) {
+    override fun init(context: android.content.Context, width: Int, height: Int, initialPlayers: List<Player>, onSpeech: (String) -> Unit) {
         this.onSpeech = onSpeech
         players.clear()
-        players.addAll(initialPlayers)
-        onSpeech("Chào con! Hãy chỉ vào các bộ phận trên cơ thể để khám phá nhé.")
+        parts.clear()
+        
+        val cx = width / 2f
+        val cy = height / 2f
+        
+        // Thiết lập tọa độ tương tác trên hình nhân
+        parts.add(BodyPart("Cái Đầu", cx, cy - 250f, 80f))
+        parts.add(BodyPart("Cái Vai", cx - 120f, cy - 120f, 50f))
+        parts.add(BodyPart("Cái Vai", cx + 120f, cy - 120f, 50f))
+        parts.add(BodyPart("Cái Bụng", cx, cy + 50f, 100f))
+        parts.add(BodyPart("Bàn Tay", cx - 220f, cy + 50f, 60f))
+        parts.add(BodyPart("Bàn Tay", cx + 220f, cy + 50f, 60f))
+        
+        onSpeech("Chào con! Hãy chạm vào các bộ phận trên cơ thể bạn nhỏ này nhé.")
     }
 
-    override fun update(width: Int, height: Int) {
+    override fun update(width: Int, height: Int) {}
+    override fun onPlayersUpdate(updatedPlayers: List<Player>) {}
+
+    override fun onTouch(x: Float, y: Float) {
         val currentTime = System.currentTimeMillis()
-        if (currentTime - lastSpeechTime < 2500) return
+        if (currentTime - lastInteractionTime < 1000) return
 
-        players.forEach { player ->
-            val lw = player.leftWrist ?: return@forEach
-            val rw = player.rightWrist ?: return@forEach
-            val ls = player.leftShoulder ?: return@forEach
-            val rs = player.rightShoulder ?: return@forEach
-            val lh = player.leftHip ?: return@forEach
-
-            // Logic đơn giản: Nếu tay đưa đến gần bộ phận nào đó
-            // Kiểm tra tay chạm đầu (Giả định đầu ở trên vai)
-            if (lw.y < ls.y - 100f || rw.y < rs.y - 100f) {
-                onSpeech("Đây là Cái Đầu. Head!")
-                lastSpeechTime = currentTime
-            } else if (dist(lw.x, lw.y, rs.x, rs.y) < 100f || dist(rw.x, rw.y, ls.x, ls.y) < 100f) {
-                onSpeech("Đây là Cái Vai. Shoulder!")
-                lastSpeechTime = currentTime
-            } else if (lw.y > lh.y - 50f && lw.y < lh.y + 150f) {
-                onSpeech("Đây là Cái Bụng. Tummy!")
-                lastSpeechTime = currentTime
+        parts.forEach { part ->
+            val dx = x - part.x
+            val dy = y - part.y
+            if (sqrt((dx * dx + dy * dy).toDouble()) < part.radius) {
+                onSpeech("Đây là " + part.name + "!")
+                lastInteractionTime = currentTime
+                return@forEach
             }
         }
     }
-
-    override fun onPlayersUpdate(updatedPlayers: List<Player>) {}
 
     override fun draw(drawScope: DrawScope, textMeasurer: androidx.compose.ui.text.TextMeasurer) {
         with(drawScope) {
-            players.forEach { p ->
-                val color = p.color
-                // Vẽ nhãn bộ phận cơ thể nếu AI nhận diện được
-                p.leftShoulder?.let { 
-                    val layout = textMeasurer.measure("VAI", TextStyle(fontSize = 18.sp, color = color, fontWeight = FontWeight.Bold))
-                    drawText(textLayoutResult = layout, topLeft = Offset(it.x, it.y - 40f))
-                }
-                
-                // Vẽ xương đơn giản để bé dễ hình dung
-                fun drawBone(p1: com.example.testapp.services.PoseDetectorService.Point?, p2: com.example.testapp.services.PoseDetectorService.Point?) {
-                    if (p1 != null && p2 != null) drawLine(color.copy(alpha = 0.5f), Offset(p1.x, p1.y), Offset(p2.x, p2.y), strokeWidth = 8f)
-                }
-                drawBone(p.leftShoulder, p.rightShoulder)
-                drawBone(p.leftShoulder, p.leftWrist)
-                drawBone(p.rightShoulder, p.rightWrist)
-                drawBone(p.leftShoulder, p.leftHip)
-                drawBone(p.rightShoulder, p.rightHip)
-                drawBone(p.leftHip, p.rightHip)
+            // Nền trắng kem
+            drawRect(CreamWhite)
+
+            val cx = size.width / 2f
+            val cy = size.height / 2f
+
+            // Vẽ hình nhân đơn giản bằng các khối hình Pastel
+            drawCircle(Color.LightGray.copy(alpha = 0.5f), 100f, Offset(cx, cy - 250f)) // Đầu
+            drawRoundRect(
+                color = Color.LightGray.copy(alpha = 0.5f),
+                topLeft = Offset(cx - 100f, cy - 150f),
+                size = Size(200f, 350f),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(40f, 40f)
+            ) // Thân
+            
+            // Vẽ các điểm tương tác rực rỡ
+            parts.forEach { part ->
+                drawCircle(
+                    color = SoftPink.copy(alpha = 0.4f),
+                    radius = part.radius,
+                    center = Offset(part.x, part.y)
+                )
+                drawCircle(
+                    color = SoftPink,
+                    radius = 10f,
+                    center = Offset(part.x, part.y)
+                )
             }
+
+            val hintLayout = textMeasurer.measure(
+                "Chạm vào các vòng tròn hồng để học tên nhé! ✨", 
+                TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold, color = TextDark)
+            )
+            drawText(
+                textLayoutResult = hintLayout, 
+                topLeft = Offset(size.width/2 - hintLayout.size.width/2, size.height - 120f)
+            )
         }
     }
 
-    private fun dist(x1: Float, y1: Float, x2: Float, y2: Float) = sqrt(((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2)).toDouble()).toFloat()
-    override fun onTouch(x: Float, y: Float) {}
     override fun release() {}
 }

@@ -122,23 +122,8 @@ class SolarSystemImpl : GameLogic {
             }
         }
 
-        // Tương tác các thành phần UI Overlay (Slider, Nút bấm điều hướng)
+        // Tương tác khi không chạm trúng hành tinh nào
         if (!hitAny) {
-            // Khu vực Slider điều chỉnh tốc độ ở đáy màn hình
-            if (y > screenHeight - 210f && y < screenHeight - 110f && x > screenWidth / 2f - 180f && x < screenWidth / 2f + 180f) {
-                val ratio = (x - (screenWidth / 2f - 150f)) / 300f
-                rotationSpeedFactor = ratio.coerceIn(0.1f, 2.5f)
-                return
-            }
-
-            // Khu vực bấm nút chuyển đổi chế độ Khám phá / Nghiên cứu
-            if (y > screenHeight - 240f && y < screenHeight - 140f) {
-                if (x < 250f) {
-                    isResearchMode = false // Chế độ thông thường
-                } else if (x > screenWidth - 280f) {
-                    isResearchMode = !isResearchMode // Kích hoạt overlay tiến trình khoa học
-                }
-            }
             planets.forEach { it.state = PlanetState.NORMAL }
         }
     }
@@ -251,13 +236,13 @@ class SolarSystemImpl : GameLogic {
             }
         }
 
-        // LAYER 3: HỆ THỐNG UI OVERLAY TOÀN BỘ TIẾNG VIỆT CHUẨN MẪU KHAN ACADEMY
+        // LAYER 3: HỆ THỐNG UI OVERLAY
 
-        // 1. Thanh Banner thông báo/Thuyết minh dưới đáy màn hình (Màu trắng kem thạch)
+        // 1. Thanh Banner thông báo/Thuyết minh dưới đáy màn hình (Màu trắng kem/vàng sữa)
         val bannerText = if (planets.any { it.state == PlanetState.SELECTED }) {
             planets.find { it.state == PlanetState.SELECTED }?.fact ?: ""
         } else {
-            getString(R.string.solar_system_title)
+            "Hệ Mặt Trời của Chúng Ta - Chạm vào hành tinh để tìm hiểu thêm!"
         }
 
         val bannerW = size.width * 0.85f
@@ -279,107 +264,9 @@ class SolarSystemImpl : GameLogic {
             bannerLayout,
             topLeft = Offset(size.width / 2f - bannerLayout.size.width / 2f, bannerY + bannerH / 2f - bannerLayout.size.height / 2f)
         )
-
-        // 2. Component Điều khiển Tốc độ Xoay (Slider Custom ở vùng trung tâm dưới)
-        val sliderW = 280f
-        val sliderX = size.width / 2f - sliderW / 2f
-        val sliderY = bannerY - 70f
-
-        // Track nền nhạt phía sau
-        drawScope.drawLine(
-            color = Color(0xFFE1BEE7),
-            start = Offset(sliderX, sliderY),
-            end = Offset(sliderX + sliderW, sliderY),
-            strokeWidth = 8f,
-            cap = StrokeCap.Round
-        )
-        // Phần tiến trình đã kéo của Slider
-        val thumbX = sliderX + ((rotationSpeedFactor - 0.1f) / 2.4f) * sliderW
-        drawScope.drawLine(
-            color = Color(0xFFAB47BC), // Màu Tím chủ đạo cấu trúc điều phối tốc độ
-            start = Offset(sliderX, sliderY),
-            end = Offset(thumbX, sliderY),
-            strokeWidth = 8f,
-            cap = StrokeCap.Round
-        )
-        // Núm vặn Slider hình cầu thạch tròn trịa cho bé kéo thả dễ dàng
-        drawScope.drawCircle(Color(0xFF8E24AA), radius = 14f, center = Offset(thumbX, sliderY))
-
-        // Chỉ dẫn nhãn văn bản hai bên slider bằng Icon sinh động
-        drawScope.drawText(textMeasurer.measure("⭐ Chậm", TextStyle(fontSize = 14.sp, color = Color.White)), topLeft = Offset(sliderX - 85f, sliderY - 12f))
-        drawScope.drawText(textMeasurer.measure("Nhanh 🌙", TextStyle(fontSize = 14.sp, color = Color.White)), topLeft = Offset(sliderX + sliderW + 15f, sliderY - 12f))
-
-        // 3. Hệ thống Nút Tính năng lớn (Bo góc tròn 32dp hoàn toàn, không sắc nhọn)
-        val btnY = bannerY - 60f
-        // Nút Khám Phá (Góc Trái)
-        drawScope.drawRoundRect(
-            color = Color(0xFF85D7FF), // Màu SkyBlue pastel chủ đạo mục Khám Phá
-            topLeft = Offset(40f, btnY),
-            size = Size(170f, 65f),
-            cornerRadius = CornerRadius(32f, 32f)
-        )
-        drawScope.drawText(
-            textMeasurer.measure("🚀 Khám Phá", TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)),
-            topLeft = Offset(70f, btnY + 16f)
-        )
-
-        // Nút Nghiên Cứu Khoa Học (Góc Phải)
-        drawScope.drawRoundRect(
-            color = Color(0xFFFF6B6B), // Màu Hồng phấn ngọt ngào lôi cuốn trẻ nhỏ
-            topLeft = Offset(size.width - 250f, btnY),
-            size = Size(210f, 65f),
-            cornerRadius = CornerRadius(32f, 32f)
-        )
-        drawScope.drawText(
-            textMeasurer.measure("🔬 Nghiên Cứu", TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)),
-            topLeft = Offset(size.width - 205f, btnY + 16f)
-        )
-
-        // LAYER EXTRA: MÀN HÌNH ĐÈ TIẾN TRÌNH KHOA HỌC ĐA VÒNG (RESEARCH MODE OVERLAY)
-        if (isResearchMode) {
-            drawResearchOverlay(drawScope, textMeasurer, size, cx, cy)
-        }
     }
 
     private fun androidx.compose.ui.unit.Dp.toPx(density: androidx.compose.ui.unit.Density): Float = with(density) { this@toPx.toPx() }
-
-    private fun drawResearchOverlay(scope: DrawScope, tm: androidx.compose.ui.text.TextMeasurer, size: Size, cx: Float, cy: Float) {
-        // Làm mờ sẫm nền mượt tinh tế tạo điểm nhấn hội tụ vào tâm
-        scope.drawRect(Color(0xFF0A0E17).copy(alpha = 0.85f))
-
-        // 4 Vòng tròn đồng tâm quản trị 4 trạng thái năng lực học tập của bé
-        val colors = listOf(Color(0xFFFF5252), Color(0xFFFFD93D), Color(0xFF6BCB77), Color(0xFF85D7FF))
-        val labels = listOf("🔴 Sắp bắt đầu", "🟡 Đang thực hiện", "🟢 Đã hoàn thành", "🔵 Đã tinh thông")
-
-        repeat(4) { i ->
-            val radius = 130f + i * 38f
-            scope.drawCircle(
-                color = colors[i].copy(alpha = 0.15f),
-                radius = radius,
-                style = Stroke(12f)
-            )
-            scope.drawArc(
-                color = colors[i],
-                startAngle = -90f,
-                sweepAngle = (researchProgress + i * 8f).coerceIn(0f, 100f) * 3.6f,
-                useCenter = false,
-                topLeft = Offset(cx - radius, cy - radius),
-                size = Size(radius * 2, radius * 2),
-                style = Stroke(14f, cap = StrokeCap.Round)
-            )
-        }
-
-        // Đoạn Text hiển thị phần trăm tiến độ lớn ngay chính tâm
-        val progText = "Tổng Tiến Trình\n       $researchProgress%"
-        val progLayout = tm.measure(progText, TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Black, color = Color.White))
-        scope.drawText(progLayout, topLeft = Offset(cx - progLayout.size.width / 2f, cy - progLayout.size.height / 2f))
-
-        // Bảng chú thích danh mục đặt gọn gàng phía bên phải (Giống hình mẫu thiết kế)
-        labels.forEachIndexed { i, label ->
-            val y = cy - 90f + i * 42f
-            scope.drawText(tm.measure(label, TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Color.White)), topLeft = Offset(size.width - 220f, y))
-        }
-    }
 
     override fun onPlayersUpdate(updatedPlayers: List<Player>) {}
     override fun release() {}

@@ -34,7 +34,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.example.testapp.game.GameViewModel
-import com.example.testapp.ui.components.KidTopBar
 import com.example.testapp.ui.screens.KnowledgePlanetScreen
 import com.example.testapp.ui.theme.*
 import java.util.concurrent.Executors
@@ -115,43 +114,36 @@ fun GameContainer(viewModel: GameViewModel, executor: java.util.concurrent.Execu
         }
 
         // LAYER 2: UI OVERLAY
-        Column(modifier = Modifier.fillMaxSize()) {
-            KidTopBar(
-                title = activeGame.name.uppercase(),
-                containerColor = SkyBlue.copy(alpha = 0.8f)
-            )
+        Box(modifier = Modifier.fillMaxSize().padding(32.dp)) {
+            // Nút Exit 3D (Z-Index Cao)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(80.dp)
+                    .clickable { 
+                        viewModel.speak("Nghỉ xíu con nhé!")
+                        viewModel.exitGame() 
+                    }
+                    .background(SoftPink, RoundedCornerShape(40.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.AutoMirrored.Filled.ExitToApp, "Exit", tint = Color.White, modifier = Modifier.size(40.dp))
+            }
             
-            Box(modifier = Modifier.fillMaxSize().padding(32.dp)) {
-                // Nút Exit 3D (Z-Index Cao)
+            // Điểm số nổi bật (Phong cách Khan Academy)
+            activeGame.players.firstOrNull()?.let { player ->
                 Box(
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .size(80.dp)
-                        .clickable { 
-                            viewModel.speak("Nghỉ xíu con nhé!")
-                            viewModel.exitGame() 
-                        }
-                        .background(SoftPink, RoundedCornerShape(40.dp)),
-                    contentAlignment = Alignment.Center
+                        .align(Alignment.TopStart)
+                        .background(SunnyYellow, RoundedCornerShape(32.dp))
+                        .padding(horizontal = 24.dp, vertical = 12.dp)
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.ExitToApp, "Exit", tint = Color.White, modifier = Modifier.size(40.dp))
-                }
-                
-                // Điểm số nổi bật (Phong cách Khan Academy)
-                activeGame.players.firstOrNull()?.let { player ->
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .background(SunnyYellow, RoundedCornerShape(32.dp))
-                            .padding(horizontal = 24.dp, vertical = 12.dp)
-                    ) {
-                        Text(
-                            text = "GIỎI QUÁ: ${player.score}",
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = TextDark,
-                            fontWeight = FontWeight.Black
-                        )
-                    }
+                    Text(
+                        text = "GIỎI QUÁ: ${player.score}",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = TextDark,
+                        fontWeight = FontWeight.Black
+                    )
                 }
             }
         }
